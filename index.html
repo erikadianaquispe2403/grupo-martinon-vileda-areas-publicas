@@ -193,21 +193,41 @@
         <label for="f-hotel">Hotel</label>
         <select id="f-hotel">
           <option value="">Selecciona...</option>
-          <option>Breathless Punta Cana</option>
-          <option>Dreams Onyx Punta Cana</option>
-          <option>Dreams Royal Beach Punta Cana</option>
-          <option>Secrets Royal Beach Punta Cana</option>
-          <option>Dreams Flora Punta Cana</option>
-          <option>Hyatt Centric Santo Domingo</option>
-          <option>JdV Royal Beach</option>
-          <option>Secrets Baby Beach Aruba</option>
-          <option>Dreams Jade</option>
+          <option value="BREPC">BREPC — Breathless Punta Cana</option>
+          <option value="DROPC">DROPC — Dreams Onyx Punta Cana</option>
+          <option value="DRRPC">DRRPC — Dreams Royal Beach Punta Cana</option>
+          <option value="SERPC">SERPC — Secrets Royal Beach Punta Cana</option>
+          <option value="DRFPC">DRFPC — Dreams Flora Punta Cana</option>
+          <option value="SDQCT">SDQCT — Hyatt Centric Santo Domingo</option>
+          <option value="PUJJD">PUJJD — JdV Royal Beach</option>
+          <option value="SEAUA">SEAUA — Secrets Baby Beach Aruba</option>
+          <option value="DRJRC">DRJRC — Dreams Jade</option>
         </select>
       </div>
       <div class="field">
         <label for="f-evaluador">Evaluador</label>
-        <input type="text" id="f-evaluador" value="Erika Quispe">
+        <input type="text" id="f-evaluador" value="Erika Quispe" readonly style="background:#F4F5F7;color:var(--muted);cursor:not-allowed;">
       </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="f-camarista">Nombre de la camarista/to entrevistada</label>
+        <input type="text" id="f-camarista" placeholder="Nombre y apellido">
+      </div>
+      <div class="field">
+        <label for="f-area">Área del hotel que limpia</label>
+        <select id="f-area">
+          <option value="">Selecciona...</option>
+          <option value="Baño Público">Baño Público</option>
+          <option value="Restaurante">Restaurante</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="f-area-otro-wrap" style="display:none;">
+      <label for="f-area-otro">Especifica el área</label>
+      <input type="text" id="f-area-otro" placeholder="Ej. Piscina, lobby, spa...">
     </div>
 
     <div class="field" id="criterios-container"></div>
@@ -309,6 +329,7 @@ async function sbFetchAll(){ return sbRequest('GET', `${SUPABASE_TABLE}?select=*
 async function sbUpsert(entry){
   return sbRequest('POST', SUPABASE_TABLE, [{
     id: entry.id, hotel: entry.hotel, evaluador: entry.evaluador,
+    camarista: entry.camarista, area: entry.area,
     criterios: entry.criterios, comentario_general: entry.comentarioGeneral,
     fotos: entry.photos, score: entry.score, clasificacion: entry.clasificacion,
     created_at: entry.createdAt
@@ -411,6 +432,7 @@ function saveEntries(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries
 function cloudRowToEntry(row){
   return {
     id: row.id, hotel: row.hotel, evaluador: row.evaluador,
+    camarista: row.camarista || '', area: row.area || '',
     criterios: row.criterios || {}, comentarioGeneral: row.comentario_general,
     photos: row.fotos || [], score: row.score, clasificacion: row.clasificacion,
     createdAt: row.created_at
@@ -475,6 +497,13 @@ function wirePhotoSlot(slot, idx){
 }
 document.querySelectorAll('.photo-slot').forEach(slot=>wirePhotoSlot(slot, parseInt(slot.dataset.slot,10)));
 
+document.getElementById('f-area').addEventListener('change', (e)=>{
+  const wrap = document.getElementById('f-area-otro-wrap');
+  wrap.style.display = e.target.value === 'Otro' ? 'block' : 'none';
+  if(e.target.value !== 'Otro'){ document.getElementById('f-area-otro').value = ''; }
+});
+
+
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -485,9 +514,15 @@ function showToast(msg){
 document.getElementById('btn-save').addEventListener('click', ()=>{
   const hotel = document.getElementById('f-hotel').value;
   const evaluador = document.getElementById('f-evaluador').value.trim();
+  const camarista = document.getElementById('f-camarista').value.trim();
+  const area = document.getElementById('f-area').value;
+  const areaOtro = document.getElementById('f-area-otro').value.trim();
   const comentarioGeneral = document.getElementById('f-comentario').value.trim();
 
   if(!hotel){ showToast('Selecciona el hotel'); return; }
+  if(!camarista){ showToast('Escribe el nombre de la camarista/to entrevistada'); return; }
+  if(!area){ showToast('Selecciona el área que limpia'); return; }
+  if(area === 'Otro' && !areaOtro){ showToast('Especifica el área en el campo de texto'); return; }
   const answered = CRITERIOS_DEF.filter(c=>currentCriterios[c.id] && currentCriterios[c.id].respuesta);
   if(answered.length === 0){ showToast('Responde al menos un criterio'); return; }
 
@@ -496,7 +531,8 @@ document.getElementById('btn-save').addEventListener('click', ()=>{
 
   const entry = {
     id: 'va_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    hotel, evaluador,
+    hotel, evaluador, camarista,
+    area: area === 'Otro' ? areaOtro : area,
     criterios: JSON.parse(JSON.stringify(currentCriterios)),
     comentarioGeneral,
     photos: currentPhotos.filter(p=>p),
@@ -504,7 +540,7 @@ document.getElementById('btn-save').addEventListener('click', ()=>{
     createdAt: new Date().toISOString()
   };
   entries.unshift(entry);
-  saveEntries(); resetForm(); renderEntries();
+  saveEntries(); resetForm(hotel); renderEntries();
   showToast('Validación guardada');
 
   if(SYNC_ENABLED){
@@ -516,8 +552,12 @@ document.getElementById('btn-save').addEventListener('click', ()=>{
   }
 });
 
-function resetForm(){
-  document.getElementById('f-hotel').value = '';
+function resetForm(keepHotel){
+  document.getElementById('f-hotel').value = keepHotel || '';
+  document.getElementById('f-camarista').value = '';
+  document.getElementById('f-area').value = '';
+  document.getElementById('f-area-otro').value = '';
+  document.getElementById('f-area-otro-wrap').style.display = 'none';
   document.getElementById('f-comentario').value = '';
   currentCriterios = {};
   currentPhotos = [null, null, null];
@@ -530,9 +570,15 @@ function resetForm(){
 }
 
 // ---- Filters ----
-const HOTELS = ["Breathless Punta Cana","Dreams Onyx Punta Cana","Dreams Royal Beach Punta Cana","Secrets Royal Beach Punta Cana","Dreams Flora Punta Cana","Hyatt Centric Santo Domingo","JdV Royal Beach","Secrets Baby Beach Aruba","Dreams Jade"];
+const HOTEL_LABELS = {
+  BREPC:'Breathless Punta Cana', DROPC:'Dreams Onyx Punta Cana', DRRPC:'Dreams Royal Beach Punta Cana',
+  SERPC:'Secrets Royal Beach Punta Cana', DRFPC:'Dreams Flora Punta Cana', SDQCT:'Hyatt Centric Santo Domingo',
+  PUJJD:'JdV Royal Beach', SEAUA:'Secrets Baby Beach Aruba', DRJRC:'Dreams Jade'
+};
+function hotelLabel(code){ return HOTEL_LABELS[code] ? `${code} — ${HOTEL_LABELS[code]}` : code; }
+const HOTELS = Object.keys(HOTEL_LABELS);
 const filterHotel = document.getElementById('filter-hotel');
-HOTELS.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; filterHotel.appendChild(o); });
+HOTELS.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=hotelLabel(h); filterHotel.appendChild(o); });
 filterHotel.addEventListener('change', renderEntries);
 document.getElementById('filter-clasificacion').addEventListener('change', renderEntries);
 
@@ -571,8 +617,8 @@ function renderEntries(){
     <div class="entry ${e.clasificacion || ''}">
       <div class="entry-top">
         <div>
-          <div class="entry-hotel">${e.hotel}</div>
-          <div class="entry-meta">${e.evaluador || 'Sin evaluador'} · ${fmtDate(e.createdAt)}</div>
+          <div class="entry-hotel">${hotelLabel(e.hotel)}</div>
+          <div class="entry-meta">${e.camarista ? escapeHtml(e.camarista) : 'Sin camarista'}${e.area ? ' · ' + escapeHtml(e.area) : ''} · ${e.evaluador || 'Sin evaluador'} · ${fmtDate(e.createdAt)}</div>
         </div>
         ${e.score !== null ? `<span class="badge ${e.clasificacion}">${e.score}% · ${e.clasificacion}</span>` : ''}
       </div>
@@ -635,7 +681,7 @@ function renderSummary(){
 
   countsBody.innerHTML = hotels.map(h=>{
     const last = summary[h].visits[0];
-    return `<tr><td>${h}</td><td class="num">${summary[h].visits.length}</td><td class="num">${last.score !== null ? last.score+'%' : '—'}</td><td>${last.clasificacion || '—'}</td></tr>`;
+    return `<tr><td>${hotelLabel(h)}</td><td class="num">${summary[h].visits.length}</td><td class="num">${last.score !== null ? last.score+'%' : '—'}</td><td>${last.clasificacion || '—'}</td></tr>`;
   }).join('');
 
   blocksContainer.innerHTML = hotels.map(h=>{
@@ -646,7 +692,7 @@ function renderSummary(){
     }).join('');
     return `
       <div style="margin-top:16px;">
-        <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:6px;">${h} — última visita (${fmtDate(last.createdAt)})</div>
+        <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:6px;">${hotelLabel(h)} — última visita (${fmtDate(last.createdAt)})</div>
         <table class="summary-table">
           <thead><tr><th>Criterio</th><th>Resultado</th></tr></thead>
           <tbody>${critRows}</tbody>
@@ -680,20 +726,20 @@ document.getElementById('btn-export-excel').addEventListener('click', ()=>{
   rows.push(['Exportado', new Date().toLocaleString('es-DO')]);
   rows.push([]);
   rows.push(['DETALLE POR CRITERIO']);
-  rows.push(['Hotel','Evaluador','Fecha','Score %','Clasificación','Criterio','Resultado','Comentario del criterio']);
+  rows.push(['Hotel','Camarista/to','Área','Evaluador','Fecha','Score %','Clasificación','Criterio','Resultado','Comentario del criterio']);
   entries.forEach(e=>{
     CRITERIOS_DEF.forEach(c=>{
       const cr = e.criterios[c.id];
       if(cr && cr.respuesta){
-        rows.push([e.hotel, e.evaluador, fmtDate(e.createdAt), e.score, e.clasificacion, c.texto, cr.respuesta, cr.comentario||'']);
+        rows.push([hotelLabel(e.hotel), e.camarista||'', e.area||'', e.evaluador, fmtDate(e.createdAt), e.score, e.clasificacion, c.texto, cr.respuesta, cr.comentario||'']);
       }
     });
   });
   rows.push([]);
   rows.push(['RESUMEN POR VISITA']);
-  rows.push(['Hotel','Evaluador','Fecha','Score %','Clasificación','Comentario general']);
+  rows.push(['Hotel','Camarista/to','Área','Evaluador','Fecha','Score %','Clasificación','Comentario general']);
   entries.forEach(e=>{
-    rows.push([e.hotel, e.evaluador, fmtDate(e.createdAt), e.score, e.clasificacion, e.comentarioGeneral||'']);
+    rows.push([hotelLabel(e.hotel), e.camarista||'', e.area||'', e.evaluador, fmtDate(e.createdAt), e.score, e.clasificacion, e.comentarioGeneral||'']);
   });
   downloadCsv('vileda_areas_publicas_' + new Date().toISOString().slice(0,10) + '.csv', rows);
   showToast('Archivo Excel (.csv) descargado');
@@ -711,7 +757,7 @@ function buildDemoEntries(){
   const now = Date.now();
   return [
     {
-      id:'demo_va_1', hotel:'Dreams Onyx Punta Cana', evaluador:'Erika Quispe',
+      id:'demo_va_1', hotel:'DROPC', evaluador:'Erika Quispe', camarista:'Damaris Anol', area:'Restaurante',
       criterios:{
         c1:{respuesta:'Cumple', comentario:''}, c2:{respuesta:'Cumple', comentario:''},
         c3:{respuesta:'Parcial', comentario:'Falta comunicar zona de piscina'}, c4:{respuesta:'Cumple', comentario:''},
@@ -723,7 +769,7 @@ function buildDemoEntries(){
       createdAt:new Date(now - 8*3600*1000).toISOString(), _demo:true
     },
     {
-      id:'demo_va_2', hotel:'Breathless Punta Cana', evaluador:'Erika Quispe',
+      id:'demo_va_2', hotel:'BREPC', evaluador:'Erika Quispe', camarista:'Yissel Santana', area:'Baño Público',
       criterios:{
         c1:{respuesta:'No cumple', comentario:'Spray Pro Max aún no llega'}, c2:{respuesta:'Parcial', comentario:''},
         c3:{respuesta:'No cumple', comentario:'No se ha identificado coralina en la zona de piscina'}, c4:{respuesta:'Parcial', comentario:''},
