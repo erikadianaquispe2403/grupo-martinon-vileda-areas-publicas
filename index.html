@@ -186,7 +186,7 @@
 <main>
   <div class="card">
     <h2>Nueva validación</h2>
-    <p class="sub">Basado en el SOP PL-HOU-XXX — Uso del Sistema ClickSpeed Vileda en habitaciones y áreas públicas (Ago. 2026)</p>
+    <p class="sub">Basado en el SOP PL-ALOJ-008 Rev. 01 — Uso del Sistema ClickSpeed Vileda en habitaciones y áreas públicas (Sept. 2026)</p>
 
     <div class="row2">
       <div class="field">
@@ -263,12 +263,15 @@
     <button id="btn-export-excel">Exportar a Excel</button>
     <button id="btn-export-pdf">Exportar a PDF</button>
   </div>
+  <div class="export-row">
+    <button id="btn-export-platform" style="flex:1;">⬆️ Generar evaluación para la plataforma</button>
+  </div>
 
   <div class="summary-section" id="summary-section">
     <h3>Resumen por hotel</h3>
-    <p class="sub">Última clasificación por hotel y promedio de cumplimiento por criterio.</p>
+    <p class="sub">Promedio de cumplimiento por hotel y por criterio, sobre todas las camaristas entrevistadas.</p>
     <table class="summary-table" id="summary-counts-table">
-      <thead><tr><th>Hotel</th><th class="num">Visitas</th><th class="num">Último %</th><th>Clasificación</th></tr></thead>
+      <thead><tr><th>Hotel</th><th class="num">Visitas</th><th class="num">% promedio</th><th>Clasificación</th></tr></thead>
       <tbody></tbody>
     </table>
     <div id="summary-hotel-blocks"></div>
@@ -345,17 +348,31 @@ function setSyncStatus(state){
   else { dot.classList.remove('online'); text.textContent = 'Guardado local (sin conexión)'; }
 }
 
-// ---- Criterios fijos (SOP PL-HOU-XXX) ----
+// ---- Criterios fijos (SOP PL-ALOJ-008 Rev. 01) ----
+const PILARES = ['Pilar 1 – Ejecución Operativa de la Implementación','Pilar 2 – Funcionalidad del Sistema','Pilar 3 – Infraestructura y Equipamiento','Pilar 4 – Adopción Operativa'];
 const CRITERIOS_DEF = [
-  {id:'c1', texto:'El Sistema Spray Pro Max ya está disponible físicamente en el hotel.'},
-  {id:'c2', texto:'La mopa de fibra azul (70–100cm) para el mármol del lobby está disponible.'},
-  {id:'c3', texto:'Las excepciones de piso (coralina / alta porosidad / texturas) están identificadas y comunicadas por la Ama de Llaves Ejecutiva.'},
-  {id:'c4', texto:'En las zonas de excepción se usa trapeador u otro método autorizado, no el sistema Click-Speed.'},
-  {id:'c5', texto:'En restaurantes a la carta, buffet y lobby NO se usa trapeador durante el servicio (solo Spray Pro Max).'},
-  {id:'c6', texto:'Al cierre de los restaurantes se realiza la limpieza con trapeador y Scale-A-Way.'},
-  {id:'c7', texto:'El mármol del lobby se mantiene específicamente con la mopa de fibra azul.'},
-  {id:'c8', texto:'La camarista de áreas públicas cuenta con la dotación mínima de mopas húmedas (según cantidad de baños a su cargo).'},
-  {id:'c9', texto:'El responsable de limpiar pasillos en porcelanato/mármol (camarista o pasillero) usa la herramienta correcta.'}
+  // Pilar 1 · Ejecución operativa
+  {id:'p1',  p:0, texto:'Prepara la solución según la fórmula: ½ litro de agua con 10 gatillazos de Daily Desinfectante/Multiuso. (SOP §5.2, §5.6)'},
+  {id:'p2',  p:0, texto:'Usa una mopa por baño o área, sin reutilizarla entre áreas. (SOP §5.2, §5.10)'},
+  {id:'p3',  p:0, texto:'Realiza el barrido previo y respeta la secuencia: barrido, mopa húmeda y, si se requiere, mopa seca. (SOP §5.10)'},
+  {id:'p4',  p:0, texto:'Aplica la técnica correcta: mopeo en forma de 8, del fondo hacia la puerta. (SOP §5.4)'},
+  {id:'p5',  p:0, texto:'En restaurantes a la carta, buffet y lobby NO se usa trapeador durante el servicio; solo el sistema Spray Pro Max. (SOP §5.11)'},
+  {id:'p6',  p:0, texto:'Al cierre del restaurante o en la limpieza regular se usa trapeador con el químico correspondiente (Solvit en buffets). (SOP §5.11, §3.5)'},
+  {id:'p7',  p:0, texto:'El mármol del lobby se mantiene con la mopa de microfibra azul de 70–100 cm. (SOP §5.12)'},
+  {id:'p8',  p:0, texto:'En pasillos de porcelanato o mármol se usa la herramienta correcta: mopa si es tarea de la camarista, Spray Pro Max si es del pasillero. (SOP §5.10)'},
+  {id:'p9',  p:0, texto:'El trapeador se usa solo en limpieza profunda programada y con autorización previa de la supervisora. (SOP §5.8, §5.9)'},
+  // Pilar 2 · Funcionalidad / pisos
+  {id:'p10', p:1, texto:'Las zonas de piso no aptas para ClickSpeed (coralina, alta porosidad, texturizados o con juntas profundas) están identificadas y comunicadas por la Ama de Llaves Ejecutiva. (SOP §5.7, §5.13)'},
+  {id:'p11', p:1, texto:'En esas zonas de excepción se usa trapeador u otro método autorizado, no el sistema ClickSpeed. (SOP §5.7, §5.13)'},
+  // Pilar 3 · Infraestructura y equipamiento
+  {id:'p12', p:2, texto:'Cuenta con la dotación mínima de 6 mopas húmedas, según la cantidad de baños a su cargo. (SOP §5.6)'},
+  {id:'p13', p:2, texto:'El Sistema Spray Pro Max está disponible y operativo para el personal que lo requiere. (SOP §3.7, §5.11)'},
+  {id:'p14', p:2, texto:'La mopa de microfibra azul de 70–100 cm está disponible para el mármol del lobby. (SOP §3.8, §5.12)'},
+  {id:'p15', p:2, texto:'Los químicos Solvit y Scale-A-Way están disponibles, con sus fichas técnicas. (SOP §3.4, §3.5, §8)'},
+  // Pilar 4 · Adopción operativa
+  {id:'p16', p:3, texto:'Las mopas se lavan diariamente en la lavandería del hotel y las usadas se depositan en la funda de mopas sucias. (SOP §5.5, §6)'},
+  {id:'p17', p:3, texto:'Existe control diario de dotación y entrega de mopas, y bitácora de la limpieza profunda con trapeador. (SOP §6)'},
+  {id:'p18', p:3, texto:'La camarista conoce el procedimiento y ha recibido práctica o capacitación del equipo de supervisión. (SOP §4)'}
 ];
 let currentCriterios = {}; // {id: {respuesta, comentario}}
 
@@ -656,14 +673,30 @@ document.getElementById('lightbox-close').addEventListener('click', ()=>document
 document.getElementById('lightbox').addEventListener('click', (e)=>{ if(e.target.id==='lightbox') document.getElementById('lightbox').classList.remove('open'); });
 
 // ---- Resumen por hotel ----
+function platState(v){ const r=Math.round(v); return r>=90?'cumple' : r>=71?'parcial' : 'nocumple'; }
+function hotelAgg(list){
+  const crit = {};
+  CRITERIOS_DEF.forEach(c=>{
+    const vals=[]; let nc=0,np=0,nn=0; const obs=[];
+    list.forEach(e=>{
+      const r = e.criterios && e.criterios[c.id] && e.criterios[c.id].respuesta;
+      if(r==='Cumple'){vals.push(100);nc++} else if(r==='Parcial'){vals.push(50);np++} else if(r==='No cumple'){vals.push(0);nn++}
+      if((r==='Parcial'||r==='No cumple') && e.criterios[c.id].comentario) obs.push(e.criterios[c.id].comentario.trim());
+    });
+    crit[c.id] = {pct: vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null, n:vals.length, nc, np, nn, obs};
+  });
+  const pcts = CRITERIOS_DEF.map(c=>crit[c.id].pct).filter(v=>v!=null);
+  const total = pcts.length ? pcts.reduce((a,b)=>a+b,0)/pcts.length : null;
+  const st = pcts.map(v=> platState(v)==='cumple'?100 : platState(v)==='parcial'?50 : 0);
+  const totalPlat = st.length ? st.reduce((a,b)=>a+b,0)/st.length : null;
+  return {crit,total,totalPlat};
+}
 function computeSummary(){
   const byHotel = {};
-  entries.forEach(e=>{
-    if(!byHotel[e.hotel]) byHotel[e.hotel] = {visits:[]};
-    byHotel[e.hotel].visits.push(e);
-  });
+  entries.forEach(e=>{ (byHotel[e.hotel] = byHotel[e.hotel] || {visits:[]}).visits.push(e); });
   Object.keys(byHotel).forEach(h=>{
     byHotel[h].visits.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+    byHotel[h].agg = hotelAgg(byHotel[h].visits);
   });
   return byHotel;
 }
@@ -672,29 +705,26 @@ function renderSummary(){
   const hotels = Object.keys(summary).sort();
   const countsBody = document.querySelector('#summary-counts-table tbody');
   const blocksContainer = document.getElementById('summary-hotel-blocks');
-
   if(hotels.length === 0){
     countsBody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Aún no hay validaciones registradas.</td></tr>`;
     blocksContainer.innerHTML = '';
     return;
   }
-
   countsBody.innerHTML = hotels.map(h=>{
-    const last = summary[h].visits[0];
-    return `<tr><td>${hotelLabel(h)}</td><td class="num">${summary[h].visits.length}</td><td class="num">${last.score !== null ? last.score+'%' : '—'}</td><td>${last.clasificacion || '—'}</td></tr>`;
+    const A = summary[h].agg, t = A.total, cl = t==null?null:classify(Math.round(t));
+    return `<tr><td>${hotelLabel(h)}</td><td class="num">${summary[h].visits.length}</td><td class="num">${t!=null ? Math.round(t)+'%' : '—'}<div style="font-size:11px;color:var(--muted);">En la plataforma: ${A.totalPlat!=null?Math.round(A.totalPlat)+'%':'—'}</div></td><td>${cl || '—'}</td></tr>`;
   }).join('');
-
   blocksContainer.innerHTML = hotels.map(h=>{
-    const last = summary[h].visits[0];
-    const critRows = CRITERIOS_DEF.filter(c=>last.criterios[c.id] && last.criterios[c.id].respuesta).map(c=>{
-      const r = last.criterios[c.id].respuesta;
-      return `<tr><td>${escapeHtml(c.texto)}</td><td>${r}</td></tr>`;
+    const A = summary[h].agg;
+    const critRows = CRITERIOS_DEF.filter(c=>A.crit[c.id].n>0).map(c=>{
+      const x = A.crit[c.id], cl = classify(Math.round(x.pct));
+      return `<tr><td>${escapeHtml(c.texto)}</td><td>${Math.round(x.pct)}% · ${cl}<div style="font-size:11px;color:var(--muted);">${x.n} resp.: ${x.nc} cumple, ${x.np} parcial, ${x.nn} no cumple</div></td></tr>`;
     }).join('');
     return `
       <div style="margin-top:16px;">
-        <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:6px;">${hotelLabel(h)} — última visita (${fmtDate(last.createdAt)})</div>
+        <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:6px;">${hotelLabel(h)} — promedio de ${summary[h].visits.length} validación(es)</div>
         <table class="summary-table">
-          <thead><tr><th>Criterio</th><th>Resultado</th></tr></thead>
+          <thead><tr><th>Criterio</th><th>Promedio</th></tr></thead>
           <tbody>${critRows}</tbody>
         </table>
       </div>`;
@@ -751,35 +781,73 @@ document.getElementById('btn-export-pdf').addEventListener('click', ()=>{
   setTimeout(()=>window.print(), 150);
 });
 
+
+// ---- Evaluaciones para la plataforma ----
+const PLAT_HOTEL = {DRFPC:'Dreams Flora',DRRPC:'Dreams Royal Beach',SERPC:'Secrets Royal Beach',DROPC:'Dreams Onyx',BREPC:'Breathless Punta Cana',SEAUA:'Secrets Baby Beach',SDQCT:'Hyatt Centric Santo Domingo',PUJJD:'JdV Royal Beach',DRJRC:'Dreams Jade'};
+function buildPlatformRecord(h, list){
+  const A = hotelAgg(list);
+  const pc=[0,0,0,0], checklist=[], opps=[], acts=[], recs=[];
+  let tot=0,cnt=0,nPar=0,nNo=0;
+  CRITERIOS_DEF.forEach(c=>{
+    const ii = pc[c.p]++, key = c.p+'_'+ii, x = A.crit[c.id];
+    let result='na', obs='';
+    if(x.pct!=null){
+      result = platState(x.pct);
+      obs = `Entrevistas: ${x.n} con respuesta; ${x.nc} cumple, ${x.np} parcial, ${x.nn} no cumple (promedio ${Math.round(x.pct)}%).` + (x.obs.length? ' Obs: '+[...new Set(x.obs)].slice(0,2).join(' | ') : '');
+      if(result==='cumple') tot+=100; else if(result==='parcial'){tot+=50;nPar++} else nNo++;
+      cnt++;
+    }
+    const block = PILARES[c.p];
+    const item = c.texto;
+    checklist.push({block, item, result, obs, evidenceName:'', editable:true, evidenceNames:[]});
+    if(result==='parcial' || result==='nocumple'){
+      const isNo = result==='nocumple', id = 'AUTO-'+key+'-'+Date.now()+'-'+c.id;
+      const text = (isNo?'Atender incumplimiento: ':'Fortalecer cumplimiento parcial: ')+item;
+      opps.push({id,text,type:'Operativa',priority:isNo?'Alta':'Media',owner:'',criterion:item,pillar:block,obs,auto:true,autoCriterionKey:key});
+      acts.push({oppId:id,pillar:block,criterion:item,finding:text,text:isNo?'Definir e implementar acción correctiva para lograr el cumplimiento del criterio.':'Completar los ajustes requeridos para alcanzar el cumplimiento total del criterio.',owner:'',date:'',status:'Pendiente',evidenceName:'',auto:true,autoCriterionKey:key,assignees:[{date:'',plan:'',owner:'',updates:[]}]});
+      recs.push((isNo?'• Priorizar acción correctiva para: ':'• Completar ajustes para: ')+item);
+    }
+  });
+  const score = cnt ? Math.round(tot/cnt) : 0;
+  const status = score>=90?'Implementación Consolidada' : score>=71?'Requiere Seguimiento' : 'Requiere Intervención Prioritaria';
+  const dates = list.map(e=>(e.createdAt||'').slice(0,10)).filter(Boolean).sort();
+  const cams = new Set(list.map(e=>(e.camarista||'').trim().toLowerCase()).filter(Boolean));
+  const areas = [...new Set(list.map(e=>e.area).filter(Boolean))];
+  const comments = [...new Set(list.map(e=>(e.comentarioGeneral||'').trim()).filter(Boolean))].join('\n');
+  return {code:'',savedAt:new Date().toISOString(),project:'Vileda Areas Publicas',hotel:PLAT_HOTEL[h]||h,property:{},visitDate:dates[dates.length-1]||'',evaluator:'Erika Quispe',hotelDirector:'',corporateDirector:'Glenys Silverio',manager:'',area:'Áreas públicas',checkinArea:'',operationalUnits:[],shift:'',score,status,
+    checklist,opportunities:opps,actions:acts,
+    generalComments:`Evaluación generada a partir de ${list.length} validación(es) de ${cams.size} camarista(s)/camarero(s) de áreas públicas (${areas.join(', ')||'sin área'}) entre ${dates[0]||''} y ${dates[dates.length-1]||''}, aplicando el SOP PL-ALOJ-008 Rev. 01. Los criterios no observados quedan N/A.`+(comments?'\nComentarios registrados:\n'+comments:''),
+    conclusions:`La evaluación obtuvo ${score}% (${status}). Se registraron ${nNo} criterio(s) No cumple y ${nPar} criterio(s) Parcial.`,
+    recommendations:recs.join('\n'),corporateSupport:'No',supportNeeded:'',nextVisitDate:'',nextVisitObjective:'',
+    source:'entrevistas-vileda-ap',interviewStats:{validaciones:list.length,camaristas:cams.size,desde:dates[0]||'',hasta:dates[dates.length-1]||''}};
+}
+document.getElementById('btn-export-platform').addEventListener('click', ()=>{
+  const real = entries.filter(e=>!e._demo);
+  if(!real.length){ showToast('No hay validaciones para exportar'); return; }
+  const byHotel = {}; real.forEach(e=>{ (byHotel[e.hotel]=byHotel[e.hotel]||[]).push(e); });
+  const hs = Object.keys(byHotel).filter(h=>CRITERIOS_DEF.some(c=>byHotel[h].some(e=>e.criterios&&e.criterios[c.id]&&['Cumple','Parcial','No cumple'].includes(e.criterios[c.id].respuesta))));
+  if(!hs.length){ showToast('Las validaciones no tienen criterios respondidos'); return; }
+  const pocas = hs.filter(h=>new Set(byHotel[h].map(e=>(e.camarista||'').trim().toLowerCase())).size<3).map(h=>hotelLabel(h)+': '+byHotel[h].length+' validación(es)');
+  if(pocas.length && !confirm('Estos hoteles tienen muy pocas camaristas entrevistadas:\n\n'+pocas.join('\n')+'\n\n¿Generar el archivo de todos modos?')) return;
+  const recs = hs.map(h=>buildPlatformRecord(h, byHotel[h]));
+  const blob = new Blob([JSON.stringify({gm_platform_assessments_v1:true, assessments:recs},null,1)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'Evaluaciones_Vileda_AreasPublicas_para_plataforma_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  showToast('Archivo generado con '+recs.length+' hotel(es)');
+});
 // ---- Demo data ----
 const DEMO_SEED_FLAG = 'gm_vileda_ap_demo_seeded';
 function buildDemoEntries(){
   const now = Date.now();
+  const mk = (vals)=>{const o={};CRITERIOS_DEF.forEach((c,i)=>{o[c.id]={respuesta:vals[i]||'Cumple',comentario:''}});return o};
+  const e1 = mk([]); e1.p10={respuesta:'Parcial',comentario:'Falta comunicar zona de piscina'};
+  const e2 = mk(['Cumple','Parcial','No cumple','Cumple','No aplica','No aplica','No aplica','No aplica','Cumple','No cumple','No cumple','Parcial','No cumple']);
   return [
-    {
-      id:'demo_va_1', hotel:'DROPC', evaluador:'Erika Quispe', camarista:'Damaris Anol', area:'Restaurante',
-      criterios:{
-        c1:{respuesta:'Cumple', comentario:''}, c2:{respuesta:'Cumple', comentario:''},
-        c3:{respuesta:'Parcial', comentario:'Falta comunicar zona de piscina'}, c4:{respuesta:'Cumple', comentario:''},
-        c5:{respuesta:'Cumple', comentario:''}, c6:{respuesta:'Cumple', comentario:''},
-        c7:{respuesta:'Cumple', comentario:''}, c8:{respuesta:'Cumple', comentario:''}, c9:{respuesta:'Cumple', comentario:''}
-      },
-      comentarioGeneral:'Buen manejo general del sistema en lobby y restaurantes.',
-      photos:[], score:94, clasificacion:'Verde',
-      createdAt:new Date(now - 8*3600*1000).toISOString(), _demo:true
-    },
-    {
-      id:'demo_va_2', hotel:'BREPC', evaluador:'Erika Quispe', camarista:'Yissel Santana', area:'Baño Público',
-      criterios:{
-        c1:{respuesta:'No cumple', comentario:'Spray Pro Max aún no llega'}, c2:{respuesta:'Parcial', comentario:''},
-        c3:{respuesta:'No cumple', comentario:'No se ha identificado coralina en la zona de piscina'}, c4:{respuesta:'Parcial', comentario:''},
-        c5:{respuesta:'Cumple', comentario:''}, c6:{respuesta:'Cumple', comentario:''},
-        c7:{respuesta:'Parcial', comentario:''}, c8:{respuesta:'Cumple', comentario:''}, c9:{respuesta:'Parcial', comentario:''}
-      },
-      comentarioGeneral:'Requiere seguimiento en implementos nuevos y excepciones de piso.',
-      photos:[], score:61, clasificacion:'Rojo',
-      createdAt:new Date(now - 30*3600*1000).toISOString(), _demo:true
-    }
+    {id:'demo_va_1', hotel:'DROPC', evaluador:'Erika Quispe', camarista:'Camarista ejemplo 1', area:'Restaurante', criterios:e1,
+     comentarioGeneral:'Ejemplo de datos.', photos:[], score:computeScore(e1), clasificacion:classify(computeScore(e1)), createdAt:new Date(now-8*3600*1000).toISOString(), _demo:true},
+    {id:'demo_va_2', hotel:'BREPC', evaluador:'Erika Quispe', camarista:'Camarista ejemplo 2', area:'Baño Público', criterios:e2,
+     comentarioGeneral:'Ejemplo de datos.', photos:[], score:computeScore(e2), clasificacion:classify(computeScore(e2)), createdAt:new Date(now-30*3600*1000).toISOString(), _demo:true}
   ];
 }
 function seedDemoIfNeeded(){
@@ -804,7 +872,7 @@ document.getElementById('btn-clear-demo').addEventListener('click', ()=>{
 renderCriteriosForm();
 updateScorePreview();
 loadEntries();
-seedDemoIfNeeded();
+entries = entries.filter(e=>!e._demo); saveEntries();
 renderEntries();
 setSyncStatus(SYNC_ENABLED ? 'syncing' : 'local');
 syncFromCloud();
