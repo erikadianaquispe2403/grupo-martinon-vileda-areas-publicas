@@ -673,7 +673,7 @@ document.getElementById('lightbox-close').addEventListener('click', ()=>document
 document.getElementById('lightbox').addEventListener('click', (e)=>{ if(e.target.id==='lightbox') document.getElementById('lightbox').classList.remove('open'); });
 
 // ---- Resumen por hotel ----
-function platState(v){ const r=Math.round(v); return r>=90?'cumple' : r>=71?'parcial' : 'nocumple'; }
+function platState(v){ const r=Math.round(v); return r>=90?'cumple' : r>=50?'parcial' : 'nocumple'; }
 function hotelAgg(list){
   const crit = {};
   CRITERIOS_DEF.forEach(c=>{
