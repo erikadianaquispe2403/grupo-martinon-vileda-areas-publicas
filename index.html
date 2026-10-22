@@ -264,6 +264,9 @@
     <button id="btn-export-pdf">Exportar a PDF</button>
   </div>
   <div class="export-row">
+    <button id="btn-export-word" style="flex:1;">Exportar a Word (editable)</button>
+  </div>
+  <div class="export-row">
     <button id="btn-export-platform" style="flex:1;">⬆️ Generar evaluación para la plataforma</button>
   </div>
 
@@ -781,6 +784,51 @@ document.getElementById('btn-export-pdf').addEventListener('click', ()=>{
   setTimeout(()=>window.print(), 150);
 });
 
+
+// ---- Word editable (.doc) ----
+document.getElementById('btn-export-word').addEventListener('click', ()=>{
+  if(entries.length === 0){ showToast('No hay validaciones para exportar'); return; }
+  const esc = escapeHtml;
+  const colorOf = r => r==='Cumple' ? '#e3f4ea;color:#1e7e4f' : r==='Parcial' ? '#fff4db;color:#8a5a00' : r==='No cumple' ? '#fde8e6;color:#b42318' : '#eceff4;color:#475467';
+  const clsColor = c => c==='Verde' ? '#1e7e4f' : c==='Amarillo' ? '#b7791f' : c==='Rojo' ? '#b42318' : '#475467';
+  const list = entries.slice().sort((a,b)=> String(a.hotel).localeCompare(String(b.hotel)) || String(a.createdAt).localeCompare(String(b.createdAt)));
+  const resumen = list.map(e=>`<tr>
+    <td>${esc(fmtDate(e.createdAt))}</td><td>${esc(hotelLabel(e.hotel))}</td><td>${esc(e.camarista||'—')}</td><td>${esc(e.area||'—')}</td><td>${esc(e.evaluador||'—')}</td>
+    <td style="text-align:center;font-weight:bold;color:${clsColor(e.clasificacion)}">${e.score===null||e.score===undefined?'—':e.score+'% · '+esc(e.clasificacion||'')}</td></tr>`).join('');
+  const detalle = list.map((e,i)=>{
+    const rows = CRITERIOS_DEF.filter(c=>e.criterios && e.criterios[c.id] && e.criterios[c.id].respuesta).map(c=>{
+      const cr = e.criterios[c.id];
+      return `<tr><td>${esc(c.texto)}</td><td style="text-align:center;font-weight:bold;background:${colorOf(cr.respuesta)}">${esc(cr.respuesta)}</td><td>${esc(cr.comentario||'')}</td></tr>`;
+    }).join('');
+    const nFotos = (e.photos||[]).length;
+    return `<h3>${i+1}. ${esc(hotelLabel(e.hotel))} — ${esc(e.camarista||'Sin camarista')}${e.area?' · '+esc(e.area):''}</h3>
+      <p>Evaluador: ${esc(e.evaluador||'—')} · Fecha: ${esc(fmtDate(e.createdAt))} · Resultado: <b style="color:${clsColor(e.clasificacion)}">${e.score===null||e.score===undefined?'—':e.score+'% · '+esc(e.clasificacion||'')}</b>${nFotos?' · Fotos: '+nFotos+' (disponibles en la app)':''}</p>
+      <table class="d"><thead><tr><th style="width:55%">Criterio</th><th style="width:12%">Resultado</th><th>Comentario</th></tr></thead><tbody>${rows||'<tr><td colspan="3">Sin criterios respondidos.</td></tr>'}</tbody></table>
+      ${e.comentarioGeneral?`<p><b>Comentario general:</b> ${esc(e.comentarioGeneral)}</p>`:''}`;
+  }).join('');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Validación Vileda — Áreas Públicas</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+  <style>
+    @page{size:A4 landscape;margin:1.5cm}
+    body{font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#1f2937}
+    h1{color:#0b2f36;font-size:18pt;margin:0 0 4pt} h2{color:#164d57;font-size:13pt;border-bottom:2px solid #164d57;padding-bottom:3pt;margin-top:16pt} h3{color:#0b2f36;font-size:11.5pt;margin:14pt 0 2pt}
+    .eyebrow{color:#5f8f95;font-size:9pt;letter-spacing:1px}
+    table{border-collapse:collapse;width:100%} th{background:#164d57;color:#fff;text-align:left;padding:4pt 6pt;font-size:9.5pt} td{border:1px solid #cfd8dc;padding:4pt 6pt;vertical-align:top;font-size:9.5pt}
+  </style></head><body>
+  <div class="eyebrow">GRUPO MARTINÓN · DIRECCIÓN CORPORATIVA DE IMPLEMENTACIÓN Y PROCESOS</div>
+  <h1>Validación Vileda — Áreas Públicas</h1>
+  <p>SOP PL-ALOJ-008 · Generado: ${new Date().toLocaleDateString('es-DO')} · ${list.length} validación(es) registradas</p>
+  <h2>Resumen de validaciones</h2>
+  <table><thead><tr><th>Fecha</th><th>Hotel</th><th>Camarista / colaborador</th><th>Área</th><th>Evaluador</th><th>Resultado</th></tr></thead><tbody>${resumen}</tbody></table>
+  <h2>Detalle por validación</h2>${detalle}
+  </body></html>`;
+  const blob = new Blob(['﻿', html], {type:'application/msword;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'Vileda_Areas_Publicas_' + new Date().toISOString().slice(0,10) + '.doc';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  showToast('Word editable (.doc) descargado');
+});
 
 // ---- Evaluaciones para la plataforma ----
 const PLAT_HOTEL = {DRFPC:'Dreams Flora',DRRPC:'Dreams Royal Beach',SERPC:'Secrets Royal Beach',DROPC:'Dreams Onyx',BREPC:'Breathless Punta Cana',SEAUA:'Secrets Baby Beach',SDQCT:'Hyatt Centric Santo Domingo',PUJJD:'JdV Royal Beach',DRJRC:'Dreams Jade'};
